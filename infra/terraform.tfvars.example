@@ -1,0 +1,6 @@
+aws_region    = "us-east-1"
+project_name  = "retail-catalog"
+github_owner  = "your-github-username"
+github_repo   = "ecs-hello-world"
+github_branch = "main"
+instance_type = "t3.micro"

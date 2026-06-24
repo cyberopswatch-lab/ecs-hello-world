@@ -28,7 +28,19 @@ infra/                <- Terraform package; provisions all AWS resources
   codepipeline.tf
   outputs.tf
   terraform.tfvars.example
+
+bootstrap/             <- run ONCE locally: sets up GitHub OIDC + state bucket
+                           for the GitHub Actions deployment path (see
+                           GITHUB_ACTIONS_SETUP.md)
+
+.github/workflows/      <- GitHub Actions workflow that plans/applies infra/
+  deploy-infra.yml         on every push (after the one-time bootstrap)
 ```
+
+> **Want infra/ to deploy itself on every `git push`, no manual `terraform apply`?**
+> See [`GITHUB_ACTIONS_SETUP.md`](./GITHUB_ACTIONS_SETUP.md) for the OIDC-based
+> GitHub Actions setup — no AWS keys stored in GitHub, just an IAM role it
+> assumes per run.
 
 ## What gets created
 
@@ -63,13 +75,31 @@ the branch you configure.)
 
 ### 2. Deploy the infrastructure
 
+`infra/` is configured for a remote S3 backend (needed for the GitHub
+Actions path below), so it needs backend values at `init` time — there's
+no plain `terraform init && terraform apply` anymore. Pick one:
+
+**Option A — GitHub Actions (recommended):** follow
+[`GITHUB_ACTIONS_SETUP.md`](./GITHUB_ACTIONS_SETUP.md) end to end. It walks
+through the one-time `bootstrap/` step (creates the state bucket + an IAM
+role GitHub can assume via OIDC) and wires up `.github/workflows/deploy-infra.yml`
+so every push plans/applies automatically.
+
+**Option B — apply locally:** run the same `bootstrap/` step from
+`GITHUB_ACTIONS_SETUP.md` first (it's what creates the state bucket even if
+you don't use GitHub Actions), then:
+
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars: set github_owner to your GitHub username,
-# adjust github_repo/branch/region/instance_type if needed
+# edit terraform.tfvars: set github_owner, adjust github_repo/branch/region/instance_type if needed
 
-terraform init
+terraform init \
+  -backend-config="bucket=<tf_state_bucket output from bootstrap>" \
+  -backend-config="key=infra/terraform.tfstate" \
+  -backend-config="region=us-east-1" \
+  -backend-config="use_lockfile=true"
+
 terraform apply
 ```
 

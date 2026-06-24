@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0" # 1.10+ for S3 native state locking (use_lockfile)
 
   required_providers {
     aws = {
@@ -7,6 +7,12 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Partial backend config: bucket/key/region/use_lockfile are supplied via
+  # `-backend-config` flags at `terraform init` time (see
+  # .github/workflows/deploy-infra.yml) so nothing AWS-account-specific is
+  # hardcoded in this repo.
+  backend "s3" {}
 }
 
 provider "aws" {
